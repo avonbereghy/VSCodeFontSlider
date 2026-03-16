@@ -5,20 +5,39 @@ struct SettingsView: View {
     @AppStorage("FontDial.showInDock") private var showInDock = false
     @AppStorage("FontDial.startAtLogin") private var startAtLogin = false
 
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // About section
             VStack(spacing: 8) {
-                Image(systemName: "textformat.size")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.primary)
+                if let appIcon = NSImage(named: "AppIcon") {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .frame(width: 80, height: 80)
+                        .cornerRadius(16)
+                } else {
+                    Image(systemName: "textformat.size")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.primary)
+                }
 
                 Text("FontDial")
                     .font(.title2.bold())
 
-                Text("Version 1.0.0")
+                Text("Version \(appVersion) (\(buildNumber))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Text("\u{00A9} 2026 Andrew von Bereghy")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             .padding(.top, 24)
             .padding(.bottom, 20)
@@ -32,7 +51,6 @@ struct SettingsView: View {
                         .onChange(of: showInDock) { _, newValue in
                             NSApp.setActivationPolicy(newValue ? .regular : .accessory)
                             if !newValue {
-                                // When hiding from dock, make sure we don't lose focus entirely
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                     NSApp.activate(ignoringOtherApps: true)
                                 }
@@ -54,7 +72,6 @@ struct SettingsView: View {
                                     try SMAppService.mainApp.unregister()
                                 }
                             } catch {
-                                // Revert on failure
                                 startAtLogin = !newValue
                             }
                         }
@@ -63,11 +80,20 @@ struct SettingsView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 20)
 
+            // GitHub link
+            HStack {
+                Spacer()
+                Link("GitHub", destination: URL(string: "https://github.com/avonbereghy/VSCodeFontSlider")!)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.top, 12)
+
             Spacer()
         }
-        .frame(width: 340, height: 280)
+        .frame(width: 340, height: 320)
         .onAppear {
-            // Sync start-at-login state with system
             startAtLogin = SMAppService.mainApp.status == .enabled
         }
     }
