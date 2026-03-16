@@ -1,4 +1,4 @@
-# VsCodeFontSlider (FontDial)
+# VSCodeFontSlider (FontDial)
 
 ![Swift](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-14.0+-000000?logo=apple&logoColor=white)
@@ -37,8 +37,8 @@ VS Code's `Cmd +/-` zooms everything uniformly. But your sidebar, editor, and te
 
 ```bash
 # Clone
-git clone https://github.com/avonbereghy/VsCodeFontSlider.git
-cd VsCodeFontSlider
+git clone https://github.com/avonbereghy/VSCodeFontSlider.git
+cd VSCodeFontSlider
 
 # Build and install to ~/Applications
 chmod +x build.sh
@@ -49,7 +49,7 @@ The app will be installed to `~/Applications/FontDial.app` and launched automati
 
 ### Option 2: Download release
 
-Download the latest `.app` from [Releases](https://github.com/avonbereghy/VsCodeFontSlider/releases), then drag to your Applications folder.
+Download the latest `.app` from [Releases](https://github.com/avonbereghy/VSCodeFontSlider/releases), then drag to your Applications folder.
 
 ### Installing XcodeGen (if needed)
 
