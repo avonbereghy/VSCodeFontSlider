@@ -4,6 +4,8 @@ import ServiceManagement
 struct SettingsView: View {
     @AppStorage("FontDial.showInDock") private var showInDock = false
     @AppStorage("FontDial.startAtLogin") private var startAtLogin = false
+    // TODO: Revisit paid upgrade flow later — not charging yet
+    // @State private var showUpgradeSheet = false
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -80,6 +82,19 @@ struct SettingsView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 20)
 
+            // TODO: Revisit paid upgrade flow later — not charging yet
+            // Button {
+            //     showUpgradeSheet = true
+            // } label: {
+            //     Label("Upgrade to Basic ($12)", systemImage: "star.fill")
+            //         .frame(maxWidth: .infinity)
+            //         .padding(.vertical, 6)
+            // }
+            // .buttonStyle(.borderedProminent)
+            // .controlSize(.regular)
+            // .padding(.horizontal, 20)
+            // .padding(.top, 16)
+
             // GitHub link
             HStack {
                 Spacer()
@@ -93,6 +108,10 @@ struct SettingsView: View {
             Spacer()
         }
         .frame(width: 340, height: 320)
+        // TODO: Revisit paid upgrade flow later
+        // .sheet(isPresented: $showUpgradeSheet) {
+        //     UpgradeComingSoonSheet(isPresented: $showUpgradeSheet)
+        // }
         .onAppear {
             startAtLogin = SMAppService.mainApp.status == .enabled
         }
@@ -108,3 +127,33 @@ struct SettingsView: View {
         .padding(.vertical, 10)
     }
 }
+
+// TODO: Revisit paid upgrade flow later — not charging yet
+// struct UpgradeComingSoonSheet: View {
+//     @Binding var isPresented: Bool
+//
+//     var body: some View {
+//         VStack(spacing: 20) {
+//             Image(systemName: "star.circle.fill")
+//                 .font(.system(size: 56))
+//                 .foregroundStyle(.yellow)
+//
+//             Text("Coming Soon")
+//                 .font(.title2.bold())
+//
+//             Text("Thanks for your interest! Paid upgrades are coming soon.")
+//                 .font(.body)
+//                 .foregroundStyle(.secondary)
+//                 .multilineTextAlignment(.center)
+//                 .padding(.horizontal, 8)
+//
+//             Button("Got it") {
+//                 isPresented = false
+//             }
+//             .buttonStyle(.borderedProminent)
+//             .keyboardShortcut(.defaultAction)
+//         }
+//         .padding(32)
+//         .frame(width: 320)
+//     }
+// }
