@@ -1,15 +1,15 @@
 import Foundation
 import CryptoKit
+import Combine
 
-@Observable
-final class SettingsManager {
+final class SettingsManager: ObservableObject {
 
     // MARK: - Published State
 
-    var zoomLevel: Double = FontSettings.vsCodeDefaults.zoomLevel
-    var editorFontSize: Int = FontSettings.vsCodeDefaults.editorFontSize
-    var terminalFontSize: Int = FontSettings.vsCodeDefaults.terminalFontSize
-    var errorMessage: String?
+    @Published var zoomLevel: Double = FontSettings.vsCodeDefaults.zoomLevel
+    @Published var editorFontSize: Int = FontSettings.vsCodeDefaults.editorFontSize
+    @Published var terminalFontSize: Int = FontSettings.vsCodeDefaults.terminalFontSize
+    @Published var errorMessage: String?
 
     // MARK: - Private
 

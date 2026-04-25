@@ -1,74 +1,120 @@
 import SwiftUI
 
+private let sharedSettingsManager = SettingsManager()
+
 @main
 struct FontDialApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var settingsManager = sharedSettingsManager
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView(settingsManager: settingsManager)
         }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusItem: NSStatusItem!
+    private enum DefaultsKey {
+        static let showInMenuBar = "FontDial.showInMenuBar"
+        static let showInDock = "FontDial.showInDock"
+    }
+
+    private var statusItem: NSStatusItem?
     private let popover = NSPopover()
     private var settingsWindow: NSWindow?
-    let settingsManager = SettingsManager()
+    private let settingsManager = sharedSettingsManager
+    private var defaultsObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Apply dock visibility from saved preference
-        let showInDock = UserDefaults.standard.bool(forKey: "FontDial.showInDock")
+        ProcessInfo.processInfo.disableAutomaticTermination("FontDial keeps a menu bar status item active")
+
+        UserDefaults.standard.register(defaults: [
+            DefaultsKey.showInMenuBar: true,
+            DefaultsKey.showInDock: false
+        ])
+
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyShellPreferences()
+        }
+
+        applyShellPreferences()
+        settingsManager.load()
+    }
+
+    deinit {
+        if let defaultsObserver {
+            NotificationCenter.default.removeObserver(defaultsObserver)
+        }
+    }
+
+    private func applyShellPreferences() {
+        let defaults = UserDefaults.standard
+        var showInMenuBar = defaults.bool(forKey: DefaultsKey.showInMenuBar)
+        let showInDock = defaults.bool(forKey: DefaultsKey.showInDock)
+
+        if !showInMenuBar && !showInDock {
+            showInMenuBar = true
+            defaults.set(true, forKey: DefaultsKey.showInMenuBar)
+        }
+
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
 
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "textformat.size", accessibilityDescription: "FontDial")
-            button.action = #selector(handleClick)
+        if showInMenuBar {
+            installStatusItemIfNeeded()
+        } else {
+            removeStatusItem()
+        }
+    }
+
+    private func installStatusItemIfNeeded() {
+        guard statusItem == nil else { return }
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.isVisible = true
+
+        if let button = item.button {
+            if let image = NSImage(systemSymbolName: "textformat.size", accessibilityDescription: "FontDial") {
+                image.isTemplate = true
+                button.image = image
+                button.imagePosition = .imageOnly
+            } else {
+                button.title = "Aa"
+                button.font = .menuBarFont(ofSize: 13)
+            }
+            button.toolTip = "FontDial"
+            button.isEnabled = true
             button.target = self
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.action = #selector(togglePopover(_:))
+            button.sendAction(on: [.leftMouseUp])
         }
 
         let hostingView = NSHostingController(rootView: PopoverView(settingsManager: settingsManager))
         popover.contentViewController = hostingView
         popover.behavior = .transient
+        popover.animates = false
 
-        settingsManager.load()
+        statusItem = item
     }
 
-    @objc private func handleClick(_ sender: NSStatusBarButton) {
-        guard let event = NSApp.currentEvent else { return }
-
-        if event.type == .rightMouseUp {
-            showContextMenu()
-        } else {
-            togglePopover(sender)
+    private func removeStatusItem() {
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+            self.statusItem = nil
         }
     }
 
-    private func togglePopover(_ sender: NSStatusBarButton) {
+    @objc private func togglePopover(_ sender: NSStatusBarButton) {
         if popover.isShown {
             popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            return
         }
-    }
 
-    private func showContextMenu() {
-        let menu = NSMenu()
-
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit FontDial", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-
-        statusItem.menu = menu
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil
+        popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     @objc private func openSettings() {
@@ -78,7 +124,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let settingsView = SettingsView()
+        let settingsView = SettingsView(settingsManager: settingsManager)
         let hostingController = NSHostingController(rootView: settingsView)
 
         let window = NSWindow(contentViewController: hostingController)

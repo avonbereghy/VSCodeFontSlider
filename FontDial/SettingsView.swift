@@ -2,10 +2,13 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
+    @ObservedObject var settingsManager: SettingsManager
+
+    @State private var editorDouble: Double = 14
+    @State private var terminalDouble: Double = 14
+    @AppStorage("FontDial.showInMenuBar") private var showInMenuBar = true
     @AppStorage("FontDial.showInDock") private var showInDock = false
     @AppStorage("FontDial.startAtLogin") private var startAtLogin = false
-    // TODO: Revisit paid upgrade flow later — not charging yet
-    // @State private var showUpgradeSheet = false
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -44,18 +47,85 @@ struct SettingsView: View {
             .padding(.top, 24)
             .padding(.bottom, 20)
 
-            // Settings
+            VStack(spacing: 14) {
+                if let error = settingsManager.errorMessage {
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                SliderRow(
+                    label: "UI Scale",
+                    icon: "uiwindow.split.2x1",
+                    value: $settingsManager.zoomLevel,
+                    range: -1.0...3.0,
+                    step: 0.25,
+                    format: "%.2f"
+                )
+                .onChange(of: settingsManager.zoomLevel) { settingsManager.save() }
+
+                SliderRow(
+                    label: "Editor",
+                    icon: "doc.text",
+                    value: $editorDouble,
+                    range: 8...36,
+                    step: 1,
+                    format: "%.0f"
+                )
+                .onChange(of: editorDouble) {
+                    settingsManager.editorFontSize = Int(editorDouble)
+                    settingsManager.save()
+                }
+
+                SliderRow(
+                    label: "Terminal",
+                    icon: "terminal",
+                    value: $terminalDouble,
+                    range: 8...36,
+                    step: 1,
+                    format: "%.0f"
+                )
+                .onChange(of: terminalDouble) {
+                    settingsManager.terminalFontSize = Int(terminalDouble)
+                    settingsManager.save()
+                }
+
+                HStack(spacing: 8) {
+                    presetButton("Compact", preset: .compact)
+                    Button("Default") {
+                        settingsManager.restoreOriginal()
+                        syncFromManager()
+                    }
+                    .controlSize(.small)
+                    .buttonStyle(.bordered)
+                    presetButton("Relaxed", preset: .relaxed)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+
             VStack(spacing: 0) {
-                settingsRow("Show icon in dock") {
+                settingsRow("Show in menu bar") {
+                    Toggle("", isOn: $showInMenuBar)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .onChange(of: showInMenuBar) { _, newValue in
+                            if !newValue && !showInDock {
+                                showInDock = true
+                            }
+                        }
+                }
+
+                Divider().padding(.horizontal, 16)
+
+                settingsRow("Show in Dock") {
                     Toggle("", isOn: $showInDock)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .onChange(of: showInDock) { _, newValue in
-                            NSApp.setActivationPolicy(newValue ? .regular : .accessory)
-                            if !newValue {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    NSApp.activate(ignoringOtherApps: true)
-                                }
+                            if !newValue && !showInMenuBar {
+                                showInMenuBar = true
                             }
                         }
                 }
@@ -107,14 +177,13 @@ struct SettingsView: View {
 
             Spacer()
         }
-        .frame(width: 340, height: 320)
-        // TODO: Revisit paid upgrade flow later
-        // .sheet(isPresented: $showUpgradeSheet) {
-        //     UpgradeComingSoonSheet(isPresented: $showUpgradeSheet)
-        // }
+        .frame(width: 360, height: 520)
         .onAppear {
+            syncFromManager()
             startAtLogin = SMAppService.mainApp.status == .enabled
         }
+        .onChange(of: settingsManager.editorFontSize) { syncFromManager() }
+        .onChange(of: settingsManager.terminalFontSize) { syncFromManager() }
     }
 
     private func settingsRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
@@ -126,34 +195,18 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
-}
 
-// TODO: Revisit paid upgrade flow later — not charging yet
-// struct UpgradeComingSoonSheet: View {
-//     @Binding var isPresented: Bool
-//
-//     var body: some View {
-//         VStack(spacing: 20) {
-//             Image(systemName: "star.circle.fill")
-//                 .font(.system(size: 56))
-//                 .foregroundStyle(.yellow)
-//
-//             Text("Coming Soon")
-//                 .font(.title2.bold())
-//
-//             Text("Thanks for your interest! Paid upgrades are coming soon.")
-//                 .font(.body)
-//                 .foregroundStyle(.secondary)
-//                 .multilineTextAlignment(.center)
-//                 .padding(.horizontal, 8)
-//
-//             Button("Got it") {
-//                 isPresented = false
-//             }
-//             .buttonStyle(.borderedProminent)
-//             .keyboardShortcut(.defaultAction)
-//         }
-//         .padding(32)
-//         .frame(width: 320)
-//     }
-// }
+    private func presetButton(_ label: String, preset: FontSettings) -> some View {
+        Button(label) {
+            settingsManager.apply(preset)
+            syncFromManager()
+        }
+        .controlSize(.small)
+        .buttonStyle(.bordered)
+    }
+
+    private func syncFromManager() {
+        editorDouble = Double(settingsManager.editorFontSize)
+        terminalDouble = Double(settingsManager.terminalFontSize)
+    }
+}

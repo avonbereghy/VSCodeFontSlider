@@ -2,10 +2,11 @@ import SwiftUI
 import ServiceManagement
 
 struct PopoverView: View {
-    @Bindable var settingsManager: SettingsManager
+    @ObservedObject var settingsManager: SettingsManager
 
     @State private var editorDouble: Double = 14
     @State private var terminalDouble: Double = 14
+    @AppStorage("FontDial.showInMenuBar") private var showInMenuBar = true
     @AppStorage("FontDial.showInDock") private var showInDock = false
     @AppStorage("FontDial.startAtLogin") private var startAtLogin = false
 
@@ -84,8 +85,21 @@ struct PopoverView: View {
             Divider()
                 .padding(.vertical, 10)
 
-            // Settings toggles
             VStack(spacing: 6) {
+                HStack {
+                    Text("Show in menu bar")
+                        .font(.caption)
+                    Spacer()
+                    Toggle("", isOn: $showInMenuBar)
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .labelsHidden()
+                        .onChange(of: showInMenuBar) { _, newValue in
+                            if !newValue && !showInDock {
+                                showInDock = true
+                            }
+                        }
+                }
                 HStack {
                     Text("Show in Dock")
                         .font(.caption)
@@ -95,7 +109,9 @@ struct PopoverView: View {
                         .controlSize(.mini)
                         .labelsHidden()
                         .onChange(of: showInDock) { _, newValue in
-                            NSApp.setActivationPolicy(newValue ? .regular : .accessory)
+                            if !newValue && !showInMenuBar {
+                                showInMenuBar = true
+                            }
                         }
                 }
                 HStack {

@@ -23,9 +23,10 @@ targets:
       path: FontDial/Resources/Info.plist
       properties:
         CFBundleIconFile: AppIcon
+        LSUIElement: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fontdial.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.fontdial.menubar
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
         ARCHS: "$(ARCHS_STANDARD)"
