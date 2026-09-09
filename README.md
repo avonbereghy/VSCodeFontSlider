@@ -20,9 +20,10 @@ VS Code's `Cmd +/-` zooms everything uniformly. But your sidebar, editor, and te
 
 ## Features
 
-- **Three independent sliders** — UI Scale, Editor font size, Terminal font size
+- **Five independent sliders** — UI Scale, Editor, Terminal, Chat, and Chat Code font sizes
 - **Real-time updates** — drag a slider, VS Code changes instantly
-- **Presets** — Compact / Default / Relaxed with one click
+- **Presets** — Compact / Default / Relaxed with one click, plus your own saved presets
+- **Editable presets** — override any built-in with your current values, or reset it to factory. Default always resets to VS Code's own defaults
 - **Bidirectional sync** — changes made in VS Code settings are reflected in FontDial
 - **JSONC-safe** — preserves comments, formatting, and key order in `settings.json`
 - **Zero dependencies** — pure Swift + SwiftUI, no external packages
@@ -84,12 +85,14 @@ Changes are debounced (200ms) and written atomically. A directory-based file wat
 ```
 FontDial/
 ├── FontDialApp.swift          # App entry, NSStatusItem, popover
-├── PopoverView.swift          # Three sliders, presets, settings toggles
+├── PopoverView.swift          # Five sliders, presets, settings toggles
 ├── SliderRow.swift            # Reusable slider component
-├── SettingsManager.swift      # Read/write/watch settings.json
+├── PresetBar.swift            # Preset chips, save/override/reset menus
+├── SettingsManager.swift      # Read/write/watch settings.json, preset storage
 ├── JSONCScanner.swift         # JSONC-safe comment stripper + key finder
-├── FontSettings.swift         # Model + preset definitions
-├── SettingsView.swift         # Settings window (dock, login)
+├── FontSettings.swift         # The five managed values
+├── Preset.swift               # Named preset model + built-in factory values
+├── SettingsView.swift         # Settings window (dock, login, quit)
 ├── Resources/
 │   ├── AppIcon.icns
 │   └── Info.plist

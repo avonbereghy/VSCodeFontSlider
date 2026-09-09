@@ -9,7 +9,12 @@ final class SettingsManager: ObservableObject {
     @Published var zoomLevel: Double = FontSettings.vsCodeDefaults.zoomLevel
     @Published var editorFontSize: Int = FontSettings.vsCodeDefaults.editorFontSize
     @Published var terminalFontSize: Int = FontSettings.vsCodeDefaults.terminalFontSize
+    @Published var chatFontSize: Int = FontSettings.vsCodeDefaults.chatFontSize
+    @Published var chatEditorFontSize: Int = FontSettings.vsCodeDefaults.chatEditorFontSize
     @Published var errorMessage: String?
+
+    /// Built-in presets with any overrides applied, followed by saved presets.
+    @Published private(set) var presets: [Preset] = []
 
     // MARK: - Private
 
@@ -28,12 +33,24 @@ final class SettingsManager: ObservableObject {
     private static let udKeyOriginalZoom = "FontDial.original.zoomLevel"
     private static let udKeyOriginalEditor = "FontDial.original.editorFontSize"
     private static let udKeyOriginalTerminal = "FontDial.original.terminalFontSize"
+    private static let udKeyOriginalChatFont = "FontDial.original.chatFontSize"
+    private static let udKeyOriginalChatEditorFont = "FontDial.original.chatEditorFontSize"
     private static let udKeyHasOriginal = "FontDial.original.saved"
+
+    // Preset storage. Built-ins persist only as overrides, so a preset that has
+    // never been changed always tracks the factory values in Preset.BuiltIn.
+    private static let udKeyPresetOverrides = "FontDial.presets.overrides"
+    private static let udKeyCustomPresets = "FontDial.presets.custom"
+
+    private var builtInOverrides: [String: FontSettings] = [:]
+    private var customPresets: [Preset] = []
 
     // Keys we manage
     private static let keyZoom = "window.zoomLevel"
     private static let keyEditor = "editor.fontSize"
     private static let keyTerminal = "terminal.integrated.fontSize"
+    private static let keyChatFont = "chat.fontSize"
+    private static let keyChatEditorFont = "chat.editor.fontSize"
 
     // MARK: - Init
 
@@ -51,6 +68,9 @@ final class SettingsManager: ObservableObject {
     // MARK: - Load
 
     func load() {
+        // Runs on every exit path below, including the early returns.
+        defer { loadPresets() }
+
         guard FileManager.default.fileExists(atPath: settingsURL.path) else {
             // Create default settings.json if it doesn't exist
             do {
@@ -85,28 +105,49 @@ final class SettingsManager: ObservableObject {
         zoomLevel = json[Self.keyZoom] as? Double ?? FontSettings.vsCodeDefaults.zoomLevel
         editorFontSize = (json[Self.keyEditor] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.editorFontSize
         terminalFontSize = (json[Self.keyTerminal] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.terminalFontSize
+        chatFontSize = (json[Self.keyChatFont] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.chatFontSize
+        chatEditorFontSize = (json[Self.keyChatEditorFont] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.chatEditorFontSize
         errorMessage = nil
 
         // Load persisted original or capture on first-ever load
         if originalSettings == nil {
             let ud = UserDefaults.standard
             if ud.bool(forKey: Self.udKeyHasOriginal) {
+                // Older FontDial versions never persisted chat font originals.
+                // Backfill from the currently loaded values instead of silently
+                // defaulting to UserDefaults' 0-for-missing-key behavior.
+                let hasChatOriginal = ud.object(forKey: Self.udKeyOriginalChatFont) != nil
+                    && ud.object(forKey: Self.udKeyOriginalChatEditorFont) != nil
+                let chatFontOrig = hasChatOriginal ? ud.integer(forKey: Self.udKeyOriginalChatFont) : chatFontSize
+                let chatEditorOrig = hasChatOriginal ? ud.integer(forKey: Self.udKeyOriginalChatEditorFont) : chatEditorFontSize
+
                 originalSettings = FontSettings(
                     zoomLevel: ud.double(forKey: Self.udKeyOriginalZoom),
                     editorFontSize: ud.integer(forKey: Self.udKeyOriginalEditor),
-                    terminalFontSize: ud.integer(forKey: Self.udKeyOriginalTerminal)
+                    terminalFontSize: ud.integer(forKey: Self.udKeyOriginalTerminal),
+                    chatFontSize: chatFontOrig,
+                    chatEditorFontSize: chatEditorOrig
                 )
+
+                if !hasChatOriginal {
+                    ud.set(chatFontOrig, forKey: Self.udKeyOriginalChatFont)
+                    ud.set(chatEditorOrig, forKey: Self.udKeyOriginalChatEditorFont)
+                }
             } else {
                 let orig = FontSettings(
                     zoomLevel: zoomLevel,
                     editorFontSize: editorFontSize,
-                    terminalFontSize: terminalFontSize
+                    terminalFontSize: terminalFontSize,
+                    chatFontSize: chatFontSize,
+                    chatEditorFontSize: chatEditorFontSize
                 )
                 originalSettings = orig
                 ud.set(true, forKey: Self.udKeyHasOriginal)
                 ud.set(orig.zoomLevel, forKey: Self.udKeyOriginalZoom)
                 ud.set(orig.editorFontSize, forKey: Self.udKeyOriginalEditor)
                 ud.set(orig.terminalFontSize, forKey: Self.udKeyOriginalTerminal)
+                ud.set(orig.chatFontSize, forKey: Self.udKeyOriginalChatFont)
+                ud.set(orig.chatEditorFontSize, forKey: Self.udKeyOriginalChatEditorFont)
             }
         }
     }
@@ -136,6 +177,8 @@ final class SettingsManager: ObservableObject {
             rawText = updateKey(Self.keyZoom, value: formatZoom(zoomLevel), in: rawText)
             rawText = updateKey(Self.keyEditor, value: "\(editorFontSize)", in: rawText)
             rawText = updateKey(Self.keyTerminal, value: "\(terminalFontSize)", in: rawText)
+            rawText = updateKey(Self.keyChatFont, value: "\(chatFontSize)", in: rawText)
+            rawText = updateKey(Self.keyChatEditorFont, value: "\(chatEditorFontSize)", in: rawText)
 
             // Atomic write
             let data = Data(rawText.utf8)
@@ -249,6 +292,8 @@ final class SettingsManager: ObservableObject {
             zoomLevel = json[Self.keyZoom] as? Double ?? FontSettings.vsCodeDefaults.zoomLevel
             editorFontSize = (json[Self.keyEditor] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.editorFontSize
             terminalFontSize = (json[Self.keyTerminal] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.terminalFontSize
+            chatFontSize = (json[Self.keyChatFont] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.chatFontSize
+            chatEditorFontSize = (json[Self.keyChatEditorFont] as? NSNumber)?.intValue ?? FontSettings.vsCodeDefaults.chatEditorFontSize
             errorMessage = nil
         } catch {
             // File might be mid-write, ignore transient errors
@@ -274,6 +319,8 @@ final class SettingsManager: ObservableObject {
         zoomLevel = preset.zoomLevel
         editorFontSize = preset.editorFontSize
         terminalFontSize = preset.terminalFontSize
+        chatFontSize = preset.chatFontSize
+        chatEditorFontSize = preset.chatEditorFontSize
         save()
     }
 
@@ -281,5 +328,131 @@ final class SettingsManager: ObservableObject {
     func restoreOriginal() {
         guard let original = originalSettings else { return }
         apply(original)
+    }
+
+    var canRestoreOriginal: Bool { originalSettings != nil }
+
+    // MARK: - Presets
+
+    /// The current slider values, as a preset payload.
+    var currentSettings: FontSettings {
+        FontSettings(
+            zoomLevel: zoomLevel,
+            editorFontSize: editorFontSize,
+            terminalFontSize: terminalFontSize,
+            chatFontSize: chatFontSize,
+            chatEditorFontSize: chatEditorFontSize
+        )
+    }
+
+    func apply(_ preset: Preset) {
+        apply(preset.settings)
+    }
+
+    /// Save the current values as a new preset. A duplicate name is numbered.
+    func savePreset(named name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        customPresets.append(
+            Preset(id: UUID().uuidString, name: uniqueName(trimmed), settings: currentSettings, isBuiltIn: false)
+        )
+        persistPresets()
+    }
+
+    /// Point a preset at the current values. Overrides the factory values when
+    /// the preset is built in.
+    func overwritePreset(_ preset: Preset) {
+        if preset.isBuiltIn {
+            builtInOverrides[preset.id] = currentSettings
+        } else if let index = customPresets.firstIndex(where: { $0.id == preset.id }) {
+            customPresets[index].settings = currentSettings
+        }
+        persistPresets()
+    }
+
+    func renamePreset(_ preset: Preset, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !preset.isBuiltIn,
+              let index = customPresets.firstIndex(where: { $0.id == preset.id }) else { return }
+        customPresets[index].name = uniqueName(trimmed, excluding: preset.id)
+        persistPresets()
+    }
+
+    func deletePreset(_ preset: Preset) {
+        guard !preset.isBuiltIn else { return }
+        customPresets.removeAll { $0.id == preset.id }
+        persistPresets()
+    }
+
+    /// Drop a built-in preset's override so it tracks the factory values again.
+    func resetPreset(_ preset: Preset) {
+        guard preset.isBuiltIn else { return }
+        builtInOverrides.removeValue(forKey: preset.id)
+        persistPresets()
+    }
+
+    func resetAllBuiltInPresets() {
+        builtInOverrides.removeAll()
+        persistPresets()
+    }
+
+    func isOverridden(_ preset: Preset) -> Bool {
+        preset.isBuiltIn && builtInOverrides[preset.id] != nil
+    }
+
+    var hasOverriddenBuiltIns: Bool { !builtInOverrides.isEmpty }
+
+    // MARK: - Preset Persistence
+
+    private func loadPresets() {
+        let ud = UserDefaults.standard
+        let decoder = JSONDecoder()
+
+        if let data = ud.data(forKey: Self.udKeyPresetOverrides),
+           let decoded = try? decoder.decode([String: FontSettings].self, from: data) {
+            builtInOverrides = decoded
+        }
+        if let data = ud.data(forKey: Self.udKeyCustomPresets),
+           let decoded = try? decoder.decode([Preset].self, from: data) {
+            customPresets = decoded.filter { !$0.isBuiltIn }
+        }
+
+        rebuildPresets()
+    }
+
+    private func persistPresets() {
+        let ud = UserDefaults.standard
+        let encoder = JSONEncoder()
+
+        if let data = try? encoder.encode(builtInOverrides) {
+            ud.set(data, forKey: Self.udKeyPresetOverrides)
+        }
+        if let data = try? encoder.encode(customPresets) {
+            ud.set(data, forKey: Self.udKeyCustomPresets)
+        }
+
+        rebuildPresets()
+    }
+
+    private func rebuildPresets() {
+        let builtIns = Preset.BuiltIn.allCases.map { builtIn in
+            Preset(
+                id: builtIn.rawValue,
+                name: builtIn.displayName,
+                settings: builtInOverrides[builtIn.rawValue] ?? builtIn.factorySettings,
+                isBuiltIn: true
+            )
+        }
+        presets = builtIns + customPresets
+    }
+
+    /// Names are how presets are told apart in the menus, so keep them distinct.
+    private func uniqueName(_ name: String, excluding id: String? = nil) -> String {
+        let taken = Set(presets.filter { $0.id != id }.map { $0.name.lowercased() })
+        guard taken.contains(name.lowercased()) else { return name }
+
+        var suffix = 2
+        while taken.contains("\(name) \(suffix)".lowercased()) { suffix += 1 }
+        return "\(name) \(suffix)"
     }
 }

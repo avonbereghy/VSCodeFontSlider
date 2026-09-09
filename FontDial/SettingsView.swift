@@ -6,6 +6,8 @@ struct SettingsView: View {
 
     @State private var editorDouble: Double = 14
     @State private var terminalDouble: Double = 14
+    @State private var chatFontDouble: Double = 13
+    @State private var chatEditorDouble: Double = 14
     @AppStorage("FontDial.showInMenuBar") private var showInMenuBar = true
     @AppStorage("FontDial.showInDock") private var showInDock = false
     @AppStorage("FontDial.startAtLogin") private var startAtLogin = false
@@ -91,16 +93,33 @@ struct SettingsView: View {
                     settingsManager.save()
                 }
 
-                HStack(spacing: 8) {
-                    presetButton("Compact", preset: .compact)
-                    Button("Default") {
-                        settingsManager.restoreOriginal()
-                        syncFromManager()
-                    }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
-                    presetButton("Relaxed", preset: .relaxed)
+                SliderRow(
+                    label: "Chat",
+                    icon: "bubble.left.and.text.bubble.right",
+                    value: $chatFontDouble,
+                    range: 8...36,
+                    step: 1,
+                    format: "%.0f"
+                )
+                .onChange(of: chatFontDouble) {
+                    settingsManager.chatFontSize = Int(chatFontDouble)
+                    settingsManager.save()
                 }
+
+                SliderRow(
+                    label: "Chat Code",
+                    icon: "chevron.left.forwardslash.chevron.right",
+                    value: $chatEditorDouble,
+                    range: 8...36,
+                    step: 1,
+                    format: "%.0f"
+                )
+                .onChange(of: chatEditorDouble) {
+                    settingsManager.chatEditorFontSize = Int(chatEditorDouble)
+                    settingsManager.save()
+                }
+
+                PresetBar(settingsManager: settingsManager, onApply: syncFromManager)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
@@ -166,14 +185,28 @@ struct SettingsView: View {
             .padding(.top, 12)
 
             Spacer()
+
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Label("Quit FontDial", systemImage: "power")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
-        .frame(width: 360, height: 520)
+        .frame(width: 360, height: 720)
         .onAppear {
             syncFromManager()
             startAtLogin = SMAppService.mainApp.status == .enabled
         }
         .onChange(of: settingsManager.editorFontSize) { syncFromManager() }
         .onChange(of: settingsManager.terminalFontSize) { syncFromManager() }
+        .onChange(of: settingsManager.chatFontSize) { syncFromManager() }
+        .onChange(of: settingsManager.chatEditorFontSize) { syncFromManager() }
     }
 
     private func settingsRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
@@ -186,17 +219,10 @@ struct SettingsView: View {
         .padding(.vertical, 10)
     }
 
-    private func presetButton(_ label: String, preset: FontSettings) -> some View {
-        Button(label) {
-            settingsManager.apply(preset)
-            syncFromManager()
-        }
-        .controlSize(.small)
-        .buttonStyle(.bordered)
-    }
-
     private func syncFromManager() {
         editorDouble = Double(settingsManager.editorFontSize)
         terminalDouble = Double(settingsManager.terminalFontSize)
+        chatFontDouble = Double(settingsManager.chatFontSize)
+        chatEditorDouble = Double(settingsManager.chatEditorFontSize)
     }
 }
