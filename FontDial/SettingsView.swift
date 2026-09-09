@@ -110,11 +110,6 @@ struct SettingsView: View {
                     Toggle("", isOn: $showInMenuBar)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .onChange(of: showInMenuBar) { _, newValue in
-                            if !newValue && !showInDock {
-                                showInDock = true
-                            }
-                        }
                 }
 
                 Divider().padding(.horizontal, 16)
@@ -123,11 +118,6 @@ struct SettingsView: View {
                     Toggle("", isOn: $showInDock)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .onChange(of: showInDock) { _, newValue in
-                            if !newValue && !showInMenuBar {
-                                showInMenuBar = true
-                            }
-                        }
                 }
 
                 Divider().padding(.horizontal, 16)
