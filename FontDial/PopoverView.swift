@@ -94,11 +94,6 @@ struct PopoverView: View {
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                         .labelsHidden()
-                        .onChange(of: showInMenuBar) { _, newValue in
-                            if !newValue && !showInDock {
-                                showInDock = true
-                            }
-                        }
                 }
                 HStack {
                     Text("Show in Dock")
@@ -108,11 +103,6 @@ struct PopoverView: View {
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                         .labelsHidden()
-                        .onChange(of: showInDock) { _, newValue in
-                            if !newValue && !showInMenuBar {
-                                showInMenuBar = true
-                            }
-                        }
                 }
                 HStack {
                     Text("Start at login")
