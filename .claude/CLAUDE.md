@@ -30,7 +30,7 @@ A macOS menu bar utility (LSUIElement) that independently controls three VS Code
 
 ## Rules
 - Do not modify files outside the current phase's scope
-- Never strip comments or reformat settings.json — only modify the three managed key values
+- Never strip comments or reformat settings.json — only modify the five managed key values
 - All error states show inline UI warnings, never modal alerts, never crashes
-- VS Code default values: editor.fontSize=14, terminal.integrated.fontSize=14, window.zoomLevel=0
+- VS Code default values: editor.fontSize=14, terminal.integrated.fontSize=14, window.zoomLevel=0, chat.fontSize=13, chat.editor.fontSize=14
 - Test with real settings.json containing comments, URLs with //, and nested language-scoped blocks

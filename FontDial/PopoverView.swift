@@ -6,6 +6,8 @@ struct PopoverView: View {
 
     @State private var editorDouble: Double = 14
     @State private var terminalDouble: Double = 14
+    @State private var chatFontDouble: Double = 13
+    @State private var chatEditorDouble: Double = 14
     @AppStorage("FontDial.showInMenuBar") private var showInMenuBar = true
     @AppStorage("FontDial.showInDock") private var showInDock = false
     @AppStorage("FontDial.startAtLogin") private var startAtLogin = false
@@ -65,22 +67,38 @@ struct PopoverView: View {
                     settingsManager.terminalFontSize = Int(terminalDouble)
                     settingsManager.save()
                 }
+
+                SliderRow(
+                    label: "Chat",
+                    icon: "bubble.left.and.text.bubble.right",
+                    value: $chatFontDouble,
+                    range: 8...36,
+                    step: 1,
+                    format: "%.0f"
+                )
+                .onChange(of: chatFontDouble) {
+                    settingsManager.chatFontSize = Int(chatFontDouble)
+                    settingsManager.save()
+                }
+
+                SliderRow(
+                    label: "Chat Code",
+                    icon: "chevron.left.forwardslash.chevron.right",
+                    value: $chatEditorDouble,
+                    range: 8...36,
+                    step: 1,
+                    format: "%.0f"
+                )
+                .onChange(of: chatEditorDouble) {
+                    settingsManager.chatEditorFontSize = Int(chatEditorDouble)
+                    settingsManager.save()
+                }
             }
 
             Divider()
                 .padding(.vertical, 10)
 
-            // Presets
-            HStack(spacing: 8) {
-                presetButton("Compact", preset: .compact)
-                Button("Default") {
-                    settingsManager.restoreOriginal()
-                    syncFromManager()
-                }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
-                presetButton("Relaxed", preset: .relaxed)
-            }
+            PresetBar(settingsManager: settingsManager, isCompact: true, onApply: syncFromManager)
 
             Divider()
                 .padding(.vertical, 10)
@@ -147,19 +165,14 @@ struct PopoverView: View {
         .onAppear { syncFromManager() }
         .onChange(of: settingsManager.editorFontSize) { syncFromManager() }
         .onChange(of: settingsManager.terminalFontSize) { syncFromManager() }
-    }
-
-    private func presetButton(_ label: String, preset: FontSettings) -> some View {
-        Button(label) {
-            settingsManager.apply(preset)
-            syncFromManager()
-        }
-        .controlSize(.small)
-        .buttonStyle(.bordered)
+        .onChange(of: settingsManager.chatFontSize) { syncFromManager() }
+        .onChange(of: settingsManager.chatEditorFontSize) { syncFromManager() }
     }
 
     private func syncFromManager() {
         editorDouble = Double(settingsManager.editorFontSize)
         terminalDouble = Double(settingsManager.terminalFontSize)
+        chatFontDouble = Double(settingsManager.chatFontSize)
+        chatEditorDouble = Double(settingsManager.chatEditorFontSize)
     }
 }
